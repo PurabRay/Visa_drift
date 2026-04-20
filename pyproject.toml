@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "visa-drift"
+version = "1.0.0"
+description = "VisaDrift — OpenEnv environment for training agents to detect and recover from silent schema/policy/rule drift in visa workflows"
+requires-python = ">=3.10"
+dependencies = [
+    "openenv-core[core]>=0.2.2",
+    "openai>=1.0.0",
+    "python-dotenv>=1.0.0",
+    "uvicorn>=0.29.0",
+    "fastapi>=0.110.0",
+    "pydantic>=2.0.0",
+]
+
+[project.scripts]
+server = "server.app:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.uv]
+dev-dependencies = [
+    "ruff",
+    "black",
+]
+
+[tool.ruff]
+line-length = 100

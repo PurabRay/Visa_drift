@@ -1,0 +1,8 @@
+spec_version: 1
+name: visa_drift
+version: "1.0.0"
+description: "VisaDrift — OpenEnv environment simulating a visa application portal where schemas, policies and rules drift silently mid-episode. The agent must complete 5 sections while learning to query requirements on rejection instead of blindly retrying."
+type: space
+runtime: fastapi
+app: server.app:app
+port: 7860
