@@ -99,4 +99,3 @@ openenv validate .
 
 API Endpoints
 MethodPathDescriptionPOST/resetReset environment; pass {"kwargs": {"task_id": "easy"}}POST/stepExecute action; pass {"action": {"message": "<json action>"}}GET/stateCurrent environment stateGET/schemaAction / observation JSON schemasGET/healthHealth checkWS/wsWebSocket for persistent sessions
-
