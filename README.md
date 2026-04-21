@@ -1,4 +1,7 @@
 VisaDrift — OpenEnv Environment
+
+**HuggingFace Space (Live Demo):** https://huggingface.co/spaces/Rayewoie922/VisaDrift
+
 An OpenEnv-compliant RL environment where an AI agent acts as a visa application assistant inside a simulated embassy portal where schemas, policies, and rules silently change mid-episode. The agent must complete a 5-section application workflow while learning to detect and recover from portal drift rather than blindly retrying failed submissions.
 
 Environment Description
