@@ -35,6 +35,4 @@ ENV ENABLE_WEB_INTERFACE=true
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:7860/health || exit 1
 EXPOSE 7860
-# --workers 1 is REQUIRED: multiple workers each hold their own env instance
-# and load-balanced /step requests would miss state from /reset.
-CMD ["sh", "-c", "cd /app/env && uvicorn server.app:app --host 0.0.0.0 --port 7860 --workers 1"]
+CMD ["sh", "-c", "cd /app/env && uvicorn server.app:app --host 0.0.0.0 --port 7860"]
