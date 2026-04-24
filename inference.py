@@ -1,41 +1,9 @@
-
 """
-inference.py — VisaDrift
-========================
-Baseline inference script. Runs an LLM agent against the VisaDrift
-environment using the OpenAI API client.
-
-Mirrors the Smart Meeting Scheduler inference.py exactly:
-  - Same environment variable names (API_KEY / OPENAI_API_KEY / HF_TOKEN,
-    API_BASE_URL, MODEL_NAME, ENV_BASE_URL, TASK_NAME)
-  - Same [START] / [STEP] / [END] log format
-  - Same api_reset / api_step / wait_for_server helpers
-  - Same get_model_action with trimmed history and regex JSON fallback
-  - Same run_task / main structure
-
-Usage:
-    # Against local server:
-    uvicorn server.app:app --host 0.0.0.0 --port 7860
-    export API_KEY=sk-...
-    python inference.py
-
-    # Against HF Space:
-    export ENV_BASE_URL=https://<your-space>.hf.space
-    export API_KEY=sk-...
-    python inference.py
-
-    # Run all tasks:
-    export TASK_NAME=all
-    python inference.py
-
-Environment variables:
-    API_KEY / OPENAI_API_KEY / HF_TOKEN  - required (checked in order)
-    API_BASE_URL / OPENAI_BASE_URL       - optional; set for open models
-    MODEL_NAME                           - model to use (default: gpt-4o-mini)
-    ENV_BASE_URL                         - environment server URL
-                                           (default: http://localhost:7860)
-    TASK_NAME                            - easy | medium | hard | all
-                                           (default: easy)
+inference.py — VisaDrift (FAIR BASELINE)
+========================================
+Updated baseline inference script. This version levels the playing field 
+by using the exact same System Prompt, Observation text cleaner, Context Window, 
+and Fallback extraction logic that the trained GRPO model gets.
 """
 from __future__ import annotations
 
@@ -48,7 +16,6 @@ from typing import Any, Dict, List, Optional
 
 import requests
 from openai import OpenAI
-
 
 # -- Configuration -------------------------------------------------------------
 
@@ -69,12 +36,10 @@ client = OpenAI(
     **_base_url_kwargs,
 )
 
-
 # -- Structured logging --------------------------------------------------------
 
 def log_start(task: str, env: str, model: str) -> None:
     print(f"[START] task={task} env={env} model={model}", flush=True)
-
 
 def log_step(
     step: int,
@@ -90,7 +55,6 @@ def log_step(
         flush=True,
     )
 
-
 def log_end(
     success: bool,
     steps: int,
@@ -104,99 +68,69 @@ def log_end(
         flush=True,
     )
 
+# -- Agent Logic Matching Notebook Exactly -------------------------------------
 
-# -- System prompt -------------------------------------------------------------
+SYSTEM_PROMPT = """You are a visa application agent. Complete a multi-section visa application workflow.
+Always respond in this exact format:
+<reasoning>
+Think step by step about what to do next based on the current observation.
+</reasoning>
+<action>
+{"action_type": "submit_section", "section": "personal_info", "payload": {"full_name": "Jane Doe", "date_of_birth": "1999-01-01", "passport_number": "P12345", "nationality": "US"}}
+</action>
 
-SYSTEM_PROMPT = """\
-You are an expert visa application agent. Your job is to complete a \
-5-section visa application on a government portal. The five sections \
-are (in order): personal_info, travel_info, documents, appointment, payment.
-
-IMPORTANT: Portal requirements can change silently mid-application. \
-If you see drift_hint = "something_changed_recently" in the observation, \
-or if a section is rejected, you MUST call query_requirements before \
-resubmitting. Never retry a rejected payload without querying first.
-
-Each step you receive a JSON observation with:
-  - result:              feedback from your last action
-  - workflow_progress:   e.g. "2/5 sections accepted"
-  - current_schema:      section schema (only present after query_requirements)
-  - last_portal_response: rejection details (only present after submit_section)
-  - drift_hint:          "something_changed_recently" if portal changed, else null
-  - drifts_fired_total:  how many drifts have fired this episode
-  - step_number / max_steps: progress counters
-  - task_instructions:   task description
-
-Respond with EXACTLY ONE JSON action object - no markdown fences, no prose:
-
-1. Query requirements for a section (or all sections):
-{"action_type": "query_requirements", "section": "personal_info"}
-{"action_type": "query_requirements"}
-
-2. Submit a section:
-{"action_type": "submit_section", "section": "personal_info",
- "payload": {"full_name": "Jane Doe", "date_of_birth": "1998-03-15",
-             "passport_number": "P1234567", "nationality": "IN"}}
-
-3. Signal completion when all sections are accepted:
-{"action_type": "done", "message": "Application complete."}
+Available action_types:
+- query_requirements — learn current field requirements (call this after any rejection or when you see drift_hint)
+- submit_section — submit a section with a fully complete payload dictionary.
+- done — signal completion after all sections accepted
 
 Rules:
-- Complete sections in order: personal_info -> travel_info -> documents ->
-  appointment -> payment.
-- BEFORE every action, check workflow_progress. If a section already
-  appears as accepted, NEVER submit it again. Move to the next pending section.
-- Always call query_requirements on a section before submitting it for
-  the first time, so you know the exact current field names.
-- If a submit_section is rejected, IMMEDIATELY call query_requirements
-  on that section - do not retry the same payload.
-- Use the field names and policy values from current_schema exactly.
-- Once a section is accepted, move on. Do not re-query or re-submit it.
-- Call done only when workflow_progress shows all 5 sections accepted.
-- Respond ONLY with the raw JSON. No explanation.\
+- Submit sections in order: personal_info, travel_info, documents, appointment, payment
+- If rejected, call query_requirements before retrying — never retry with the same payload
+- If drift_hint is set, call query_requirements immediately
+- Use ONLY fields listed in the current schema — do not use old field names after a drift
+- CRITICAL: NEVER use "..." or output incomplete JSON. You must generate the full dictionary with all required fields.
 """
 
-
-# -- HTTP helpers --------------------------------------------------------------
-
-def _post(path: str, body: Any = None, timeout: int = 30) -> Dict[str, Any]:
-    url = f"{ENV_BASE_URL}{path}"
-    r = requests.post(url, json=body, timeout=timeout)
-    r.raise_for_status()
-    return r.json()
-
-
-def _get(path: str, timeout: int = 10) -> Dict[str, Any]:
-    url = f"{ENV_BASE_URL}{path}"
-    r = requests.get(url, timeout=timeout)
-    r.raise_for_status()
-    return r.json()
-
-
-def api_reset(task_id: str) -> Dict[str, Any]:
-    """POST /reset with task_id kwarg - openenv reset body format."""
-    return _post("/reset", {"kwargs": {"task_id": task_id}})
-
-
-def api_step(action_json: str) -> Dict[str, Any]:
-    """POST /step with correct openenv action envelope."""
-    return _post("/step", {"action": {"message": action_json}})
-
-
-# -- LLM action selection ------------------------------------------------------
+def obs_to_text(obs: Dict[str, Any]) -> str:
+    if isinstance(obs, dict):
+        parts = []
+        step = obs.get("step_number", 0)
+        max_s = obs.get("max_steps", 20)
+        prog = obs.get("workflow_progress", "0/5 sections accepted")
+        parts.append(f"Step {step}/{max_s} | Progress: {prog}")
+        
+        if obs.get("drift_hint"):
+            parts.append(f"⚠️ DRIFT HINT: {obs['drift_hint']} — call query_requirements now!")
+            
+        res = obs.get("result", "")
+        if res:
+            parts.append(f"Result: {res}")
+            
+        pr = obs.get("last_portal_response")
+        if pr:
+            if isinstance(pr, dict):
+                parts.append(f"Portal response: {pr.get('status', 'unknown')}")
+            else:
+                parts.append(f"Portal response: {pr}")
+            
+        if obs.get("current_schema"):
+            parts.append(f"Current schema: {json.dumps(obs['current_schema'])}")
+            
+        return "\n".join(parts)
+    return str(obs)
 
 def get_model_action(
     obs: Dict[str, Any],
     step: int,
     history: List[Dict],
 ) -> Dict[str, Any]:
-    user_content = (
-        f"STEP {step}\n\n"
-        f"OBSERVATION:\n{json.dumps(obs, indent=2)}\n\n"
-        "Respond with your next action as a JSON object."
-    )
+    
+    # 1. Clean the observation
+    user_content = obs_to_text(obs)
 
-    trimmed = history[-6:] if len(history) > 6 else list(history)
+    # 2. Emulate the window_size = 2 (meaning last 2 pairs, 4 items total)
+    trimmed = history[-4:] if len(history) > 4 else list(history)
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         *trimmed,
@@ -208,26 +142,58 @@ def get_model_action(
         resp = client.chat.completions.create(
             model=MODEL_NAME,
             max_tokens=512,
+            temperature=0.1, # Match your notebook's temp
             messages=messages,
         )
         raw = (resp.choices[0].message.content or "").strip()
     except Exception as exc:
         print(f"[DEBUG] LLM error: {exc}", flush=True)
-        raw = '{"action_type": "done", "message": "LLM error."}'
+        raw = '<action>\n{"action_type": "query_requirements"}\n</action>'
 
     history.append({"role": "assistant", "content": raw})
 
-    clean = re.sub(r"```(?:json)?|```", "", raw).strip()
+    # 3. Exact matching extraction logic with safe fallback
+    text = raw
+    if "<action>" in text:
+        text = text.split("<action>")[-1].split("</action>")[0].strip()
+        
     try:
-        return json.loads(clean)
-    except json.JSONDecodeError:
-        match = re.search(r"\{.*\}", clean, re.DOTALL)
-        if match:
-            try:
-                return json.loads(match.group())
-            except Exception:
-                pass
-    return {"action_type": "done", "message": "JSON parse error."}
+        start = text.find('{')
+        if start != -1:
+            decoder = json.JSONDecoder()
+            obj, _ = decoder.raw_decode(text[start:])
+            
+            if "action" in obj and "action_type" not in obj:
+                obj["action_type"] = obj.pop("action")
+            if "data" in obj and "payload" not in obj:
+                obj["payload"] = obj.pop("data")
+            return obj
+    except Exception:
+        pass
+        
+    # Safe fallback
+    return {"action_type": "query_requirements"}
+
+
+# -- HTTP helpers --------------------------------------------------------------
+
+def _post(path: str, body: Any = None, timeout: int = 30) -> Dict[str, Any]:
+    url = f"{ENV_BASE_URL}{path}"
+    r = requests.post(url, json=body, timeout=timeout)
+    r.raise_for_status()
+    return r.json()
+
+def _get(path: str, timeout: int = 10) -> Dict[str, Any]:
+    url = f"{ENV_BASE_URL}{path}"
+    r = requests.get(url, timeout=timeout)
+    r.raise_for_status()
+    return r.json()
+
+def api_reset(task_id: str) -> Dict[str, Any]:
+    return _post("/reset", {"kwargs": {"task_id": task_id}})
+
+def api_step(action_json: str) -> Dict[str, Any]:
+    return _post("/step", {"action": {"message": action_json}})
 
 
 # -- Task runner ---------------------------------------------------------------
@@ -245,8 +211,8 @@ def run_task(task_id: str) -> float:
     success = False
 
     try:
-        max_steps = obs.get("max_steps", 35)
-        for step in range(1, max_steps + 5):
+        max_steps = obs.get("max_steps", 30) # Match notebook
+        for step in range(1, max_steps + 1):
             action_dict = get_model_action(obs, step, history)
             action_str = json.dumps(action_dict, separators=(",", ":"))
 
@@ -282,7 +248,7 @@ def run_task(task_id: str) -> float:
         print(f"[DEBUG] run_task({task_id}) error: {exc}", flush=True)
 
     finally:
-        final_score = max(0.05, min(0.95, final_score))
+        final_score = max(0.00, min(1.00, final_score)) # Removed 0.05 min clamp
         log_end(
             success=success,
             steps=steps_taken,
@@ -326,10 +292,10 @@ def main() -> None:
         score = run_task(task_id)
         results[task_id] = score
 
-    print("\n=== Baseline Results ===")
+    print("\n=== Fair Baseline Results ===")
     for tid, sc in results.items():
         print(f"  {tid:8s}: {sc:.4f}")
-    print("========================")
+    print("=============================")
 
 
 if __name__ == "__main__":
