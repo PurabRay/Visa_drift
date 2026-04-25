@@ -3,8 +3,8 @@
   "model": "llama-3.1-8b-instant",
   "date": "2026-04-20",
   "results": {
-    "easy":   {"score": 0.60, "steps": 24, "success": true},
-    "medium": {"score": 0.50, "steps": 6,  "success": false},
+    "easy":   {"score": 0.50, "steps": 24, "success": true},
+    "medium": {"score": 0.60, "steps": 6,  "success": false},
     "hard":   {"score": 0.60, "steps": 24, "success": true}
   },
   "notes": "Medium terminated early due to rate limiting. Re-run needed."
