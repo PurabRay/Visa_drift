@@ -3,9 +3,9 @@
 * **Hugging Face Space (Live Demo):** [https://huggingface.co/spaces/Rayewoie922/Visadrift_eval_space](https://huggingface.co/spaces/Rayewoie922/Visadrift_eval_space)
 * **Colab Notebook (Training Code):** [https://colab.research.google.com/drive/1FF_z1QiRSpwKQqcQ07cgpfWqvQKU0idR?usp=sharing](https://colab.research.google.com/drive/1FF_z1QiRSpwKQqcQ07cgpfWqvQKU0idR?usp=sharing)
 * **Code Repository:** [https://github.com/PurabRay/Visa_drift](https://github.com/PurabRay/Visa_drift)
-* **YouTube Video / Blog Post:** [https://huggingface.co/spaces/Rayewoie922/VisaDrift-Blog]
+* **Blog Post:** [https://huggingface.co/spaces/Rayewoie922/VisaDrift-Blog]
 * **Evaluation Notebook:**:**[https://colab.research.google.com/drive/1EkhKsWSgplI2ow5nEs1JSZ3KQIDkrA1t?usp=sharing]**
-
+* **Training Environment:**:**[https://huggingface.co/spaces/Rayewoie922/VisaDrift]**
 ---
 
 ## 📖 Environment Description
