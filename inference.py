@@ -78,12 +78,10 @@ Think step by step about what to do next based on the current observation.
 <action>
 {"action_type": "submit_section", "section": "personal_info", "payload": {"full_name": "Jane Doe", "date_of_birth": "1999-01-01", "passport_number": "P12345", "nationality": "US"}}
 </action>
-
 Available action_types:
 - query_requirements — learn current field requirements (call this after any rejection or when you see drift_hint)
 - submit_section — submit a section with a fully complete payload dictionary.
 - done — signal completion after all sections accepted
-
 Rules:
 - Submit sections in order: personal_info, travel_info, documents, appointment, payment
 - If rejected, call query_requirements before retrying — never retry with the same payload
