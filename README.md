@@ -6,7 +6,8 @@
 * **Blog Post:** [https://huggingface.co/spaces/Rayewoie922/Visadrift_eval_space/blob/main/Blog.md]
 * **Evaluation Notebook**:**[https://colab.research.google.com/drive/1EkhKsWSgplI2ow5nEs1JSZ3KQIDkrA1t?usp=sharing]**
 * **Training Environment**:**[https://huggingface.co/spaces/Rayewoie922/VisaDrift]**
-* **Blog-post(second link)**:**[https://huggingface.co/spaces/Rayewoie922/VisaDrift-Blog]** 
+* **Blog-post(second link)**:**[https://huggingface.co/spaces/Rayewoie922/VisaDrift-Blog]**
+* **Environment**:**[https://huggingface.co/spaces/Rayewoie922/VisaDrift]**
 ---
 
 ## 📖 Environment Description
